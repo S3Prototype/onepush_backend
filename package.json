@@ -1,0 +1,30 @@
+{
+  "name": "onepush_backend",
+  "version": "1.0.0",
+  "description": "Backend for OnePush app",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "npm run test",
+    "dev": "nodemon src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/S3Prototype/onepush_backend.git"
+  },
+  "keywords": [
+    "onepush",
+    "app",
+    "s3prototype",
+    "shaquilhansford"
+  ],
+  "author": "shaquil hansford",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/S3Prototype/onepush_backend/issues"
+  },
+  "homepage": "https://github.com/S3Prototype/onepush_backend#readme",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1"
+  }
+}
