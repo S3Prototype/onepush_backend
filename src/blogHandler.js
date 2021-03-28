@@ -1,53 +1,69 @@
 const GhostAdminAPI = require('@tryghost/admin-api');
 
 async function dispatchRequests(req) {
-    const messages = []
+    // const messages = {}
+    // const errors = {}
 
-    if(req.body.ghostKey && req.body.ghostUrl)
-        try{
-            messages.push( writeToGhost(req.body) )
-        } catch(error){
-            messages.push(error)
-        }
+    let messages = []
 
-    if(req.body.hashnodeKey)
-        try{
-            messages.push( await writeToHashnode(req.body) )
-        } catch(error){
-            messages.push(error)
-        }    
+    if(req.body.activeBlogs.length <= 0){
+        return [
+            addErrorMessage(`Please select the blogs you want to post to in the Connections tab.`)
+        ]
+    }
+
+    if(!req.body.blogText)
+        return [
+            addErrorMessage(`Failed to submit. The body of your blog post is empty.`)
+        ]
     
-    if(req.body.mediumKey)
+    messages = await Promise.all(req.body.activeBlogs.map(async blog=>{ 
         try{
-            messages.push( await writeToMedium(req.body) )
-        } catch(error){
-            messages.push(error)
-        }
+            return writeTo[blog](req.body)
+        } catch(err){
+            return addErrorMessage(err)
+        } 
+    }))
+    .then(res=>res)
+    .catch(err=>err)
     
-    if(req.body.devKey)
-        try{
-            messages.push( await writeToDev(req.body) )
-        } catch(error){
-            messages.push(error)
-        }  
-
-    if(messages.length <= 0) messages.push("Error. For some reason, your blog did not post to any of the selected platforms.")
-
+    if(messages.length <= 0)
+        messages.push(addErrorMessage("Your post did not submit to any of the selected platforms. Did you enter your API keys properly?"))
     return messages
+}
+
+function addErrorMessage(data){
+    return {
+        message: 'Error',
+        data
+    }
+}
+
+function addSuccessMessage(data){
+    return {
+        message: 'Success',
+        data
+    }
+}
+
+const writeTo = {
+    'ghost_blog': writeToGhost,
+    'medium_blog': writeToMedium,
+    'hashnode_blog': writeToHashnode,
+    'dev_blog': writeToDev,
 }
 
 
 async function writeToGhost(query){
+
+    if(!query.ghostUrl || !query.ghostKey)
+        return addErrorMessage('Please provide both an api url, and an api key for your ghost account.')
+
     const api = new GhostAdminAPI({
         url: query.ghostUrl,
         key: query.ghostKey,
         version: "v3"
     });
-
-    //After the ghostresult returns, use that information
-    //to do a api.posts.edit event.
-    //Now you can edit the featured image,
-    //and make the post public.
 
     let postResult
     try{
@@ -68,29 +84,12 @@ async function writeToGhost(query){
         })
     } catch(err){
         console.log(err)
-        return err
+        return addErrorMessage("Failed to post to Ghost.")
     }
 
-    console.log("Successfully posted", postResult)
+    // console.log("Successfully posted", postResult)
 
-    // let editResult
-    // try{
-    //     editResult = await api.posts.edit({
-    //         id: postResult.id,
-    //         title: "YO",
-    //         visibility: "public",
-    //         updated_at: postResult.updated_at || new Date().toISOString()
-    //     })
-    // } catch(err){
-    //     console.log(err)
-    //     return err
-    // }
-
-
-
-    // console.log("Successfully posted", JSON.stringify(ghostResult, null, 2))
-
-    return postResult
+    return addSuccessMessage("Successfully posted to ghost!")
 }
 
 async function writeToDev(query){
@@ -107,7 +106,7 @@ async function writeToDev(query){
             article: {
                 title: query.blogTitle,
                 published: true,
-                body_markdown: query.headerAndContent,
+                body_markdown: query.headerAndBlogText,
                 tags: query.blogTags,
                 series: "Onepush Series"
             }
@@ -159,7 +158,7 @@ async function writeToMedium(query){
         body: JSON.stringify({
             title: query.blogTitle,
             contentFormat: "markdown",
-            content: query.headerAndContent,
+            content: query.headerAndBlogText,
             // canonicalUrl: `http://shaquilhansford.medium.com/posts/${query.blogTitle.replace(/\s/g, '-')}`,
             tags: query.blogTags,
             publishStatus: "public"

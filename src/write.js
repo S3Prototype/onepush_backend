@@ -6,12 +6,17 @@ const blogHandler = require('./blogHandler')
 router.post('/', async function (req, res) {
     // console.log("Bdoy received for write blogs: ", req.body)
 
-    const messages = blogHandler.dispatchRequests(req)
+    let writeResult
+    try{
+      writeResult = await blogHandler.dispatchRequests(req)
+    } catch(err){
+      writeResult = {message: 'Error', data: err}
+    }
 
-    res.send(JSON.stringify({
-      messages: messages[0],
-      done: "Yup, we're done."
-    }))
+    console.log(writeResult)
+    res.set({
+      'Content-Type': 'application/json',
+    }).json(writeResult)
 })
 
 module.exports = router
