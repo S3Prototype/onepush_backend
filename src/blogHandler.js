@@ -1,4 +1,5 @@
 const GhostAdminAPI = require('@tryghost/admin-api');
+const fetch = require('node-fetch')
 
 async function dispatchRequests(req) {
     // const messages = {}
@@ -17,12 +18,18 @@ async function dispatchRequests(req) {
             addErrorMessage(`Failed to submit. The body of your blog post is empty.`)
         ]
     
+    
+    if(!req.body.blogTitle)
+        return [
+            addErrorMessage(`Failed to submit. The title of your blog post is empty.`)
+        ]
+
     messages = await Promise.all(req.body.activeBlogs.map(async blog=>{ 
         try{
             return writeTo[blog](req.body)
         } catch(err){
             return addErrorMessage(err)
-        } 
+        }
     }))
     .then(res=>res)
     .catch(err=>err)
@@ -84,7 +91,7 @@ async function writeToGhost(query){
         })
     } catch(err){
         console.log(err)
-        return addErrorMessage("Failed to post to Ghost.")
+        return addErrorMessage(`Failed to post to Ghost. ${err}`)
     }
 
     // console.log("Successfully posted", postResult)
@@ -93,35 +100,40 @@ async function writeToGhost(query){
 }
 
 async function writeToDev(query){
+    if(!query.devKey)
+        return addErrorMessage('Please provide an api key for your DEV account.')
     // console.log("DEV API", process.env.DEV_API_KEY)
-    const myRequest = new Request(`https://dev.to/api/articles`, {
-        method: 'POST',
-        headers: { 
-            'api-key': `${query.devKey}`,
-            'Content-Type': 'application/json'
-        },
-        // mode: 'cors',
-        // cache: 'default',
-        body: JSON.stringify({
-            article: {
-                title: query.blogTitle,
-                published: true,
-                body_markdown: query.headerAndBlogText,
-                tags: query.blogTags,
-                series: "Onepush Series"
-            }
-        })
-      })
 
       try{
-          const result =  await fetch(myRequest)
+          const result = await fetch(`https://dev.to/api/articles`, {
+              method: 'POST',
+              headers: { 
+                  'api-key': `${query.devKey}`,
+                  'Content-Type': 'application/json'
+              },
+              // mode: 'cors',
+              // cache: 'default',
+              body: JSON.stringify({
+                  article: {
+                      title: query.blogTitle,
+                      published: true,
+                      body_markdown: query.headerAndBlogText,
+                      tags: query.blogTags,
+                      series: "Onepush Series"
+                  }
+              })
+            })
           return result
       } catch(error){
-          return error
+          return addErrorMessage(`Failed to post to DEV. ${error}.`)
       }
 }
 
 async function writeToMedium(query){
+
+    if(!query.mediumKey)
+        return addErrorMessage(`Please provide an API key for your Medium account.`)
+
 
     if(!query.medium_user_id){
         try{
@@ -143,38 +155,38 @@ async function writeToMedium(query){
         }
     }
 
-
-    const myRequest = new Request(`https://api.medium.com/v1/users/${query.medium_user_id}/posts`, {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            "Accept": "application/json",
-            "Accept-Charset": "utf-8",
-            "Host": "api.medium.com",
-            'Authorization': `Bearer ${query.mediumKey}`
-        },
-        mode: 'cors',
-        cache: 'default',
-        body: JSON.stringify({
-            title: query.blogTitle,
-            contentFormat: "markdown",
-            content: query.headerAndBlogText,
-            // canonicalUrl: `http://shaquilhansford.medium.com/posts/${query.blogTitle.replace(/\s/g, '-')}`,
-            tags: query.blogTags,
-            publishStatus: "public"
-        })
-    })
-
     try{
-        const postRequest = await fetch(myRequest)              
+        const postRequest = await fetch(`https://api.medium.com/v1/users/${query.medium_user_id}/posts`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                "Accept": "application/json",
+                "Accept-Charset": "utf-8",
+                "Host": "api.medium.com",
+                'Authorization': `Bearer ${query.mediumKey}`
+            },
+            mode: 'cors',
+            cache: 'default',
+            body: JSON.stringify({
+                title: query.blogTitle,
+                contentFormat: "markdown",
+                content: query.headerAndBlogText,
+                // canonicalUrl: `http://shaquilhansford.medium.com/posts/${query.blogTitle.replace(/\s/g, '-')}`,
+                tags: query.blogTags,
+                publishStatus: "public"
+            })
+        })
+
         return await postRequest.json()
     } catch(error){
-        console.log("Medium is breaking")
-        return error
+        return addErrorMessage(`Failed to post to Medium. ${error}`)
     }      
 }
 
 async function writeToHashnode(query){
+    if(!query.hashnodeKey)
+        return addErrorMessage('Please provide an api key for your hashnode account.')
+
     try{
         const result = await fetch('https://api.hashnode.com', {
             method: 'POST',
@@ -204,7 +216,7 @@ async function writeToHashnode(query){
         return await result.json()
         
     } catch(error){
-        return error
+        return addErrorMessage(`Failed to post to Hashnode. ${error}`)
     }
 }
 
