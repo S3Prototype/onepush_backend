@@ -1,4 +1,5 @@
 const GhostAdminAPI = require('@tryghost/admin-api');
+const { response } = require('express');
 const fetch = require('node-fetch')
 
 async function dispatchRequests(req) {
@@ -28,11 +29,13 @@ async function dispatchRequests(req) {
         try{
             return writeTo[blog](req.body)
         } catch(err){
+            if(err instanceof Error) err = err.message
+
             return addErrorMessage(err)
         }
     }))
     .then(res=>res)
-    .catch(err=>err)
+    .catch(err=>addErrorMessage(`Fatal error. ${err}`))
     
     if(messages.length <= 0)
         messages.push(addErrorMessage("Your post did not submit to any of the selected platforms. Did you enter your API keys properly?"))
@@ -46,11 +49,22 @@ function addErrorMessage(data){
     }
 }
 
-function addSuccessMessage(data){
-    return {
+function addSuccessMessage(data, url){
+    const returnData = {
         message: 'Success',
         data
     }
+    
+    if(url) returnData.url = url
+
+    return returnData
+}
+
+async function getFetchError(error){   
+    if(error instanceof Error) return error.message
+    
+    error = await error.json()
+    return error.error
 }
 
 const writeTo = {
@@ -59,7 +73,6 @@ const writeTo = {
     'hashnode_blog': writeToHashnode,
     'dev_blog': writeToDev,
 }
-
 
 async function writeToGhost(query){
 
@@ -76,27 +89,20 @@ async function writeToGhost(query){
     try{
         postResult = await api.posts.add({
             title: query.blogTitle,
-            // mobiledoc: JSON.stringify({
-            //     "version":"0.3.1",
-            //     "atoms":[],
-            //     "cards":[
-            //     ],
-            //     "markups":[],
-            //     "sections":[[10,0],[1,"p",[]]]
-            // }),
-            // markdown: query.blogText),
             mobiledoc: JSON.stringify({"version":"0.3.1","atoms":[],"cards":[["markdown",{"markdown":query.headerAndBlogText}]],"markups":[],"sections":[[10,0],[1,"p",[]]]}),
             status: "published",
             tags: query.blogTags
         })
     } catch(err){
-        console.log(err)
-        return addErrorMessage(`Failed to post to Ghost. ${err}`)
+        const errData = getFetchError(error)
+        return addErrorMessage(`Failed to post to Ghost. ${errData}`)
     }
 
-    // console.log("Successfully posted", postResult)
+    postResult = await postResult.json()
+    const url = ''
+    if(postResult.url) url = postResult.url
 
-    return addSuccessMessage("Successfully posted to ghost!")
+    return addSuccessMessage("Successfully posted to ghost!", url)
 }
 
 async function writeToDev(query){
@@ -123,9 +129,18 @@ async function writeToDev(query){
                   }
               })
             })
-          return result
+        
+        result = await result.json()
+
+        const url = ''
+        if(result) url = result.url;
+
+        return addSuccessMessage('Successfully posted to DEV!', url)
+
       } catch(error){
-          return addErrorMessage(`Failed to post to DEV. ${error}.`)
+        const errData = getFetchError(error)
+
+        return addErrorMessage(`Failed to post to DEV. ${errData}.`)
       }
 }
 
@@ -149,9 +164,15 @@ async function writeToMedium(query){
             })
 
             const responseData = await userData.json()
+                //If we didn't get the user's ID
+            if(!response.data.id)
+                return addErrorMessage(`Could not find your account in Medium's databases. Did you enter the correct API key?`)
+
             query.medium_user_id = responseData.data.id
         } catch(error){
-            return error
+            const errData = getFetchError(error)
+
+            return addErrorMessage(`Failed to post to Medium. We couldn't find your account in their databases. ${errData}`)
         }
     }
 
@@ -177,9 +198,12 @@ async function writeToMedium(query){
             })
         })
 
-        return await postRequest.json()
+        const url = await postRequest.json().url
+        return addSuccessMessage('Successfully posted to Medium!',
+            url)
     } catch(error){
-        return addErrorMessage(`Failed to post to Medium. ${error}`)
+        const errData = getFetchError(error)
+        return addErrorMessage(`Failed to post to Medium. ${errData}`)
     }      
 }
 
@@ -213,10 +237,12 @@ async function writeToHashnode(query){
             })
         })
 
-        return await result.json()
+            //Hashnode doesn't return a url with a successful post.
+        return addSuccessMessage('Successfully posted to Hashnode')
         
     } catch(error){
-        return addErrorMessage(`Failed to post to Hashnode. ${error}`)
+        const errData = getFetchError(error)
+        return addErrorMessage(`Failed to post to Hashnode. ${errData}`)
     }
 }
 
