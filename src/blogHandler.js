@@ -63,6 +63,7 @@ function addSuccessMessage(data, url){
 async function getFetchError(error){   
     if(error instanceof Error) return error.message
     
+    console.log("Returning Json of error")
     error = await error.json()
     return error.error
 }
@@ -98,8 +99,8 @@ async function writeToGhost(query){
         return addErrorMessage(`Failed to post to Ghost. ${errData}`)
     }
 
-    postResult = await postResult.json()
-    const url = ''
+    // postResult = await postResult.json()
+    let url = ''
     if(postResult.url) url = postResult.url
 
     return addSuccessMessage("Successfully posted to ghost!", url)
@@ -110,38 +111,44 @@ async function writeToDev(query){
         return addErrorMessage('Please provide an api key for your DEV account.')
     // console.log("DEV API", process.env.DEV_API_KEY)
 
-      try{
-          const result = await fetch(`https://dev.to/api/articles`, {
-              method: 'POST',
-              headers: { 
-                  'api-key': `${query.devKey}`,
-                  'Content-Type': 'application/json'
-              },
-              // mode: 'cors',
-              // cache: 'default',
-              body: JSON.stringify({
-                  article: {
-                      title: query.blogTitle,
-                      published: true,
-                      body_markdown: query.headerAndBlogText,
-                      tags: query.blogTags,
-                      series: "Onepush Series"
-                  }
-              })
-            })
-        
-        result = await result.json()
+    const queryMarkDown = query.headerUrl && query.headerUrl.length > 0 ?
+        query.headerAndBlogText : query.blogText
 
-        const url = ''
-        if(result) url = result.url;
+    try{
+        const result = await fetch(`https://dev.to/api/articles`, {
+            method: 'POST',
+            headers: { 
+                'api-key': `${query.devKey}`,
+                'Content-Type': 'application/json'
+            },
+            // mode: 'cors',
+            // cache: 'default',
+            body: JSON.stringify({
+                article: {
+                    title: query.blogTitle,
+                    published: true,
+                    body_markdown: queryMarkDown,
+                    tags: query.blogTags,
+                    series: "Onepush Series"
+                }
+            })
+        })
+    
+        const resultJson = await result.json()
+
+        if(resultJson.error)
+            throw new Error(resultJson.error)
+
+        let url = ''
+        if(resultJson) url = resultJson.url;
 
         return addSuccessMessage('Successfully posted to DEV!', url)
 
-      } catch(error){
+    } catch(error){
         const errData = getFetchError(error)
 
         return addErrorMessage(`Failed to post to DEV. ${errData}.`)
-      }
+    }
 }
 
 async function writeToMedium(query){
@@ -149,7 +156,7 @@ async function writeToMedium(query){
     if(!query.mediumKey)
         return addErrorMessage(`Please provide an API key for your Medium account.`)
 
-
+    console.log('Token is', query.mediumKey)
     if(!query.medium_user_id){
         try{
             const userData = await fetch(`https://api.medium.com/v1/me`, {
@@ -165,16 +172,22 @@ async function writeToMedium(query){
 
             const responseData = await userData.json()
                 //If we didn't get the user's ID
-            if(!response.data.id)
+
+            // console.log("Now we'll check the responseData")
+            // console.log("Btw, response is", responseData)
+            if(responseData.errors || !responseData.data.id)
                 return addErrorMessage(`Could not find your account in Medium's databases. Did you enter the correct API key?`)
 
             query.medium_user_id = responseData.data.id
         } catch(error){
-            const errData = getFetchError(error)
+            const errData = await getFetchError(error)
 
-            return addErrorMessage(`Failed to post to Medium. We couldn't find your account in their databases. ${errData}`)
+            return addErrorMessage(`Trouble posting to Medium. We couldn't find your account in their databases. ${errData}`)
         }
     }
+
+    const queryMarkDown = query.headerUrl && query.headerUrl.length > 0 ?
+        query.headerAndBlogText : query.blogText
 
     try{
         const postRequest = await fetch(`https://api.medium.com/v1/users/${query.medium_user_id}/posts`, {
@@ -191,19 +204,23 @@ async function writeToMedium(query){
             body: JSON.stringify({
                 title: query.blogTitle,
                 contentFormat: "markdown",
-                content: query.headerAndBlogText,
-                // canonicalUrl: `http://shaquilhansford.medium.com/posts/${query.blogTitle.replace(/\s/g, '-')}`,
+                content: queryMarkDown,
                 tags: query.blogTags,
                 publishStatus: "public"
             })
         })
 
-        const url = await postRequest.json().url
+        let postJson = await postRequest.json()
+
+        if(postJson.errors)
+            throw new Error(postJson.errors[0].message)
+
+        const url = postJson.data.url
         return addSuccessMessage('Successfully posted to Medium!',
             url)
     } catch(error){
-        const errData = getFetchError(error)
-        return addErrorMessage(`Failed to post to Medium. ${errData}`)
+        const errData = await getFetchError(error)
+        return addErrorMessage(`Failed posting to Medium. ${errData}`)
     }      
 }
 
@@ -237,11 +254,14 @@ async function writeToHashnode(query){
             })
         })
 
+        const newRes = await result.json()
+        if(!newRes.data.createStory.success)
+            throw new Error(newRes.data.createStory.message)
             //Hashnode doesn't return a url with a successful post.
         return addSuccessMessage('Successfully posted to Hashnode')
         
     } catch(error){
-        const errData = getFetchError(error)
+        const errData = await getFetchError(error)
         return addErrorMessage(`Failed to post to Hashnode. ${errData}`)
     }
 }
