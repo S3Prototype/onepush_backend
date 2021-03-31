@@ -18,20 +18,7 @@ app.use('/api/write', writeHandler)
 app.get('/', function (req, res) {
     res.send('Hello World')
 }) 
+// console.log('Port is', process.env.PORT)
 var port = process.env.PORT || '0.0.0.0';
+// var port = process.env.PORT || '2100';
 app.listen(port)
-
-// const http = require('http');
-
-// // const hostname = 'localhost';
-// const port = 2100;
-
-// const server = http.createServer((req, res) => {
-//   res.statusCode = 200;
-//   res.setHeader('Content-Type', 'text/plain');
-//   res.end('Hello World');
-// });
-
-// server.listen(port, () => {
-//   console.log(`Server running on port ${port}`);
-// });
