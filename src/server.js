@@ -18,7 +18,8 @@ app.use('/api/write', writeHandler)
 app.get('/', function (req, res) {
     res.send('Hello World')
 }) 
-app.listen(2100)
+var port = process.env.PORT || '0.0.0.0';
+app.listen(port)
 
 // const http = require('http');
 
