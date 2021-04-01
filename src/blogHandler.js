@@ -129,7 +129,7 @@ async function writeToDev(query){
                     published: true,
                     body_markdown: queryMarkDown,
                     tags: query.blogTags,
-                    series: "Onepush Series"
+                    // series: "Onepush Series"
                 }
             })
         })
