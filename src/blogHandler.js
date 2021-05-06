@@ -3,8 +3,6 @@ const { response } = require('express');
 const fetch = require('node-fetch')
 
 async function dispatchRequests(req) {
-    // const messages = {}
-    // const errors = {}
 
     let messages = []
 
@@ -171,9 +169,6 @@ async function writeToMedium(query){
 
             const responseData = await userData.json()
                 //If we didn't get the user's ID
-
-            // console.log("Now we'll check the responseData")
-            // console.log("Btw, response is", responseData)
             if(responseData.errors || !responseData.data.id)
                 return addErrorMessage(`Could not find your account in Medium's databases. Did you enter the correct API key?`)
 

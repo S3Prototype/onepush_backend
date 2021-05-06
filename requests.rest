@@ -19,3 +19,18 @@ Content-Type: application/json
 {
     "username":"Tom"
 }
+
+
+###
+
+GET http://localhost:2100/users/
+
+###
+
+POST http://localhost:2100/users/login
+Content-Type: application/json
+
+{
+    "username":"mom",
+    "password":"yes"
+}
