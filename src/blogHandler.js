@@ -109,7 +109,6 @@ async function writeToGhost(query){
 async function writeToDev(query){
     if(!query.devKey)
         return addErrorMessage('Please provide an api key for your DEV account.')
-    // console.log("DEV API", process.env.DEV_API_KEY)
 
     const queryMarkDown = query.headerUrl && query.headerUrl.length > 0 ?
         query.headerAndBlogText : query.blogText

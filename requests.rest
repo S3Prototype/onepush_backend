@@ -1,0 +1,21 @@
+GET http://localhost:2100/users/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE2MjAyNTk0ODIsImV4cCI6MTYyMDI1OTUxMn0.1RV0n7DWQaL1fb3n9PT6GlrAiycmZcfzscsTScQ-0qU
+
+###
+
+POST http://localhost:2100/token/
+Content-Type: application/json
+
+{
+    "token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiVG9tIiwiaWF0IjoxNjIwMjU5NDQ3fQ.xENAUni7B8_8tyJR1c0O3HPCpeajIr4V9L8Z0mqkT6E"
+}
+
+
+###
+
+POST http://localhost:2100/users/login
+Content-Type: application/json
+
+{
+    "username":"Tom"
+}
